@@ -1,22 +1,31 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from typing import Optional
 
-from app.agents.requirements_agent import RequirementsAgent
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, HttpUrl
+
+from app.agents.coordinator import CoordinatorAgent
+from app.models import CoverageReport
 
 router = APIRouter(prefix="/generation", tags=["generation"])
 
-agent = RequirementsAgent()
+coordinator = CoordinatorAgent()
 
 
-class PromptPayload(BaseModel):
-    prompt: str
+class UiSourcePayload(BaseModel):
+    url: Optional[HttpUrl] = None
+    html: Optional[str] = None
+    requirements_text: Optional[str] = None
 
 
-@router.post("/manual/ui")
-async def generate_manual_ui_test_cases(payload: PromptPayload):
+@router.post("/ui/full", response_model=CoverageReport)
+async def generate_full_ui_flow(payload: UiSourcePayload):
     try:
-        code = await agent.generate_from_prompt(payload.prompt)
+        report = await coordinator.full_ui_flow(
+            url=str(payload.url) if payload.url else None,
+            html=payload.html,
+            requirements_text=payload.requirements_text,
+        )
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc))
 
-    return {"generated_code": code}
+    return report

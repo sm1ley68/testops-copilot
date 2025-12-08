@@ -1,34 +1,40 @@
-from app.llm_client import get_llm_client
+from app.models import UiModel, TestCase, TestSuite
 
 
 class RequirementsAgent:
+    """
+    Агент, который по UiModel или тексту требований генерирует TestSuite.
+    Пока заглушка: делает один простой кейс.
+    """
 
-    def __init__(self, model_name: str = "zai-org/GLM-4.6"):
-        self._client = get_llm_client()
-        self._model_name = model_name
+    async def generate_from_ui_model(self, ui: UiModel) -> TestSuite:
+        cases: list[TestCase] = []
 
-    async def generate_from_prompt(self, user_prompt: str) -> str:
-        # system-prompt: то, что задаёт роль и формат, он у нас «зашит» на бэке
-        system_prompt = (
-            "Ты опытный QA-инженер. Твоя задача — по входному описанию "
-            "генерировать ручные UI тест-кейсы в формате Allure TestOps as Code (Python).\n"
-            "Требования:\n"
-            "- использовать паттерн AAA (Arrange-Act-Assert);\n"
-            "- в каждом тесте использовать декораторы Allure "
-            "(@allure.manual, @allure.feature, @allure.story, @allure.suite, "
-            "@allure.title, @allure.tag, @allure.label(\"priority\", ...));\n"
-            "- выводить ТОЛЬКО валидный Python-код без лишнего текста.\n"
+        for page in ui.pages:
+            cases.append(
+                TestCase(
+                    title=f"Отображение страницы {page.name}",
+                    description=f"Проверить, что страница {page.url} открывается без ошибок.",
+                    steps=[
+                        f"Открыть страницу {page.url}",
+                        "Убедиться, что основной контент отображается.",
+                    ],
+                    expected_result="Страница отображается без ошибок, основные элементы видимы.",
+                    priority="NORMAL",
+                    tags=["ui", "smoke"],
+                )
+            )
+
+        return TestSuite(name="UI suite (stub)", cases=cases)
+
+    async def generate_from_requirements_text(self, text: str) -> TestSuite:
+        # заглушка для случая, когда фронт присылает сразу текст требований
+        case = TestCase(
+            title="Сценарий из текстовых требований",
+            description=text,
+            steps=["Шаги определяются на основе описания."],
+            expected_result="Ожидаемый результат определён в описании.",
+            priority="NORMAL",
+            tags=["ui"],
         )
-
-        # JSON-запрос к Cloud.ru Foundation Models (OpenAI-compatible)
-        response = self._client.chat.completions.create(
-            model=self._model_name,
-            max_tokens=2000,
-            temperature=0.2,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-        )
-
-        return response.choices[0].message.content or ""
+        return TestSuite(name="Text-based suite (stub)", cases=[case])
