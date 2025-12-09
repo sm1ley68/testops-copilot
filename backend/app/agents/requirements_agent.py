@@ -128,11 +128,12 @@ class RequirementsAgent:
 
             # Если LLM вернул массив напрямую
             if isinstance(suite_data, list):
-                for case in suite_data:
-                    priority = str(case.get("priority", "NORMAL")).upper().strip()
-                    if priority not in ["CRITICAL", "HIGH", "MEDIUM", "NORMAL", "LOW"]:
-                        priority = "NORMAL"
-                    case["priority"] = priority
+                for case in suite_data.get("cases", []):
+                    if isinstance(case, dict):  # Проверка что это словарь
+                        priority = str(case.get("priority", "NORMAL")).upper().strip()
+                        if priority not in ["CRITICAL", "HIGH", "MEDIUM", "NORMAL", "LOW"]:
+                            priority = "NORMAL"
+                        case["priority"] = priority
                 print(f"[RequirementsAgent] Parsed {len(suite_data)} UI cases from JSON (array format)")
                 cases = [TestCase(**case) for case in suite_data]
                 return TestSuite(
@@ -143,10 +144,11 @@ class RequirementsAgent:
             # Если вернул объект с полем cases
             elif isinstance(suite_data, dict):
                 for case in suite_data.get("cases", []):
-                    priority = str(case.get("priority", "NORMAL")).upper().strip()
-                    if priority not in ["CRITICAL", "HIGH", "MEDIUM", "NORMAL", "LOW"]:
-                        priority = "NORMAL"
-                    case["priority"] = priority
+                    if isinstance(case, dict):  # ← ДОБАВИТЬ
+                        priority = str(case.get("priority", "NORMAL")).upper().strip()
+                        if priority not in ["CRITICAL", "HIGH", "MEDIUM", "NORMAL", "LOW"]:
+                            priority = "NORMAL"
+                        case["priority"] = priority
                 print(f"[RequirementsAgent] Parsed {len(suite_data.get('cases', []))} UI cases from JSON (dict format)")
                 cases = [TestCase(**case) for case in suite_data.get("cases", [])]
                 return TestSuite(
@@ -270,11 +272,12 @@ Minimum 15-20 test cases required."""
 
             # Если LLM вернул массив напрямую
             if isinstance(suite_data, list):
-                for case in suite_data:
-                    priority = str(case.get("priority", "NORMAL")).upper().strip()
-                    if priority not in ["CRITICAL", "HIGH", "MEDIUM", "NORMAL", "LOW"]:
-                        priority = "NORMAL"
-                    case["priority"] = priority
+                for case in suite_data.get("cases", []):
+                    if isinstance(case, dict):  # Проверка что это словарь
+                        priority = str(case.get("priority", "NORMAL")).upper().strip()
+                        if priority not in ["CRITICAL", "HIGH", "MEDIUM", "NORMAL", "LOW"]:
+                            priority = "NORMAL"
+                        case["priority"] = priority
                 cases = [TestCase(**case) for case in suite_data]
                 return TestSuite(
                     name="Evolution Compute API Test Suite",
@@ -284,10 +287,11 @@ Minimum 15-20 test cases required."""
             # Если вернул объект с полем cases
             elif isinstance(suite_data, dict):
                 for case in suite_data.get("cases", []):
-                    priority = str(case.get("priority", "NORMAL")).upper().strip()
-                    if priority not in ["CRITICAL", "HIGH", "MEDIUM", "NORMAL", "LOW"]:
-                        priority = "NORMAL"
-                    case["priority"] = priority
+                    if isinstance(case, dict):  # ← ДОБАВИТЬ
+                        priority = str(case.get("priority", "NORMAL")).upper().strip()
+                        if priority not in ["CRITICAL", "HIGH", "MEDIUM", "NORMAL", "LOW"]:
+                            priority = "NORMAL"
+                        case["priority"] = priority
                 cases = [TestCase(**case) for case in suite_data.get("cases", [])]
                 return TestSuite(
                     name=suite_data.get("name", "Evolution Compute API Test Suite"),
