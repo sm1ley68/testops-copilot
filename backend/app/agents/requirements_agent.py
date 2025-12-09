@@ -17,51 +17,67 @@ class RequirementsAgent:
         """
         Генерирует набор тест-кейсов (минимум 15) для UI калькулятора Cloud.ru.
         """
-        system_prompt = """Ты — эксперт по тестированию UI веб-приложений и Allure TestOps.
+        system_prompt = """You are an expert in UI web application testing and Allure TestOps.
 
-Твоя задача: на основе требований к функционалу сгенерировать минимум 15 детальных тест-кейсов для ручного тестирования.
+        **IMPORTANT: Write ALL content ONLY in ENGLISH. Do NOT use Russian or any other language.**
 
-Каждый тест-кейс должен содержать:
-- title: краткое название теста (например, "Проверка сложения двух положительных чисел")
-- description: подробное описание того, что проверяется
-- steps: массив шагов в формате AAA (Arrange-Act-Assert):
-  * Arrange (подготовка): настройка начального состояния
-  * Act (действие): выполнение тестируемого действия
-  * Assert (проверка): проверка ожидаемого результата
-- expected_result: что должно произойти после выполнения шагов
-- priority: "CRITICAL", "HIGH", "NORMAL", или "LOW"
-- tags: массив меток для категоризации (например, ["ui", "calculator", "smoke", "regression"])
+        Your task: based on functional requirements, generate at least 15 detailed manual test cases.
 
-ВАЖНО:
-1. Сгенерируй минимум 15 различных тест-кейсов, покрывающих разные сценарии
-2. Включи позитивные и негативные кейсы
-3. Покрой edge cases (граничные значения, пустые поля, большие числа)
-4. Шаги должны быть чёткими и детальными
-5. Используй Allure-теги для группировки: feature, story, severity
+        Each test case must contain:
+        - title: brief test name (e.g., "Verify addition of two positive numbers")
+        - description: detailed description of what is being tested
+        - steps: array of steps in AAA format (Arrange-Act-Assert):
+          * Arrange: set up initial state
+          * Act: perform tested action
+          * Assert: verify expected result
+        - expected_result: what should happen after executing steps
+        - priority: "CRITICAL", "HIGH", "NORMAL", or "LOW"
+        - tags: array of labels for categorization (e.g., ["ui", "calculator", "smoke", "regression"])
 
-Верни ТОЛЬКО валидный JSON в формате:
-{
-  "name": "Test Suite for UI Calculator",
-  "cases": [
-    {
-      "title": "...",
-      "description": "...",
-      "steps": ["Arrange: ...", "Act: ...", "Assert: ..."],
-      "expected_result": "...",
-      "priority": "CRITICAL",
-      "tags": ["ui", "calculator", "smoke"]
-    },
-    ...
-  ]
-}
+        CRITICAL REQUIREMENTS:
+        1. Generate at least 15 different test cases covering various scenarios
+        2. Include positive and negative test cases
+        3. Cover edge cases (boundary values, empty fields, large numbers)
+        4. Steps must be clear and detailed
+        5. Use Allure tags for grouping: feature, story, severity
 
-НЕ добавляй никаких комментариев или текста до/после JSON."""
+        Return ONLY valid JSON in format:
+        {
+          "name": "Test Suite for UI Calculator",
+          "cases": [
+            {
+              "title": "...",
+              "description": "...",
+              "steps": ["Arrange: ...", "Act: ...", "Assert: ..."],
+              "expected_result": "...",
+              "priority": "CRITICAL",
+              "tags": ["ui", "calculator", "smoke"]
+            },
+            ...
+          ]
+        }
+        
+        Example of a well-structured test case:
+        {
+          "title": "Verify division by zero error handling",
+          "description": "Test that calculator displays error message when user attempts to divide by zero",
+          "steps": [
+            "Arrange: Open calculator application",
+            "Act: Enter '5', press '/', enter '0', press '='",
+            "Assert: Error message 'Division by zero is not allowed' is displayed"
+          ],
+          "expected_result": "Error message shown, calculator remains functional",
+          "priority": "CRITICAL",
+          "tags": ["ui", "calculator", "negative", "error-handling"]
+        }
+        
+        Do NOT add any comments or text before/after JSON."""
 
-        user_prompt = f"""Требования к функционалу UI калькулятора Cloud.ru:
+        user_prompt = f"""Functional requirements for Cloud.ru UI calculator:
 
-{requirements}
+        {requirements}
 
-Сгенерируй минимум 15 тест-кейсов для ручного тестирования этого функционала."""
+        Generate at least 15 test cases for manual testing of this functionality."""
 
         print(f"[RequirementsAgent] Calling LLM with model: {self._model_name}")
 
@@ -75,7 +91,7 @@ class RequirementsAgent:
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt}
                     ],
-                    "temperature": 0.7,
+                    "temperature": 0.8,
                     "max_tokens": 13000,
                 }
             )
