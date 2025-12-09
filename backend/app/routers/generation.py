@@ -4,7 +4,8 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, HttpUrl
 
 from app.agents.coordinator import CoordinatorAgent
-from app.models import CoverageReport
+from app.agents.requirements_agent import RequirementsAgent
+from app.models import CoverageReport, TestSuite
 
 router = APIRouter(prefix="/generation", tags=["generation"])
 
@@ -29,3 +30,93 @@ async def generate_full_ui_flow(payload: UiSourcePayload):
         raise HTTPException(status_code=502, detail=str(exc))
 
     return report
+
+
+@router.post("/api/vms", response_model=TestSuite)
+async def generate_api_vm_test_cases():
+    """
+    Генерирует ручные тест-кейсы для Cloud.ru Evolution Compute API.
+    Покрывает VMs, Disks, Flavors endpoints согласно кейсу 2 из ТЗ.
+
+    Генерирует минимум 15 тест-кейсов с покрытием:
+    - CRUD операции для VMs (create, read, update, delete, start, stop, reboot)
+    - CRUD операции для Disks + attach/detach к VM
+    - GET операции для Flavors (список и детали конфигураций)
+    - Аутентификация (Bearer token) и обработка ошибок
+    - Позитивные и негативные сценарии
+    """
+
+    api_specification = """
+# Cloud.ru Evolution Compute API v3
+
+## Base Information
+- Base URL: https://compute.api.cloud.ru
+- Authentication: Bearer token (userPlaneApiToken in Authorization header)
+- Content-Type: application/json
+- ID Format: All resource IDs must be in UUIDv4 format
+
+## API Sections
+
+### 1. Virtual Machines (VMs)
+- GET /vms - Get list of all virtual machines
+- POST /vms - Create new virtual machine (requires: name, flavor_id, image_id)
+- GET /vms/{vm_id} - Get specific VM details by ID
+- PATCH /vms/{vm_id} - Update VM configuration (name, flavor, etc.)
+- DELETE /vms/{vm_id} - Delete virtual machine
+- POST /vms/{vm_id}/start - Start stopped VM
+- POST /vms/{vm_id}/stop - Stop running VM
+- POST /vms/{vm_id}/reboot - Reboot running VM
+
+### 2. Disks
+- GET /disks - Get list of all disks
+- POST /disks - Create new disk (requires: name, size, availability_zone)
+- GET /disks/{disk_id} - Get specific disk details by ID
+- PATCH /disks/{disk_id} - Update disk configuration (name, size)
+- DELETE /disks/{disk_id} - Delete disk (only if not attached to VM)
+- POST /disks/{disk_id}/attach - Attach disk to VM (requires: vm_id in body)
+- POST /disks/{disk_id}/detach - Detach disk from VM
+
+### 3. Flavors (Instance Configurations)
+- GET /flavors - Get list of available instance configurations
+- GET /flavors/{flavor_id} - Get specific flavor details (CPU, RAM, disk, network specs)
+
+## Common Response Codes
+- 200 OK - Successful GET/PATCH/action
+- 201 Created - Successful POST (resource created)
+- 204 No Content - Successful DELETE
+- 400 Bad Request - Invalid request data or parameters
+- 401 Unauthorized - Missing or invalid authentication token
+- 404 Not Found - Resource with specified ID does not exist
+- 409 Conflict - Operation not allowed in current state (e.g., delete attached disk)
+- 500 Internal Server Error - Server-side error
+
+## Error Response Format
+All errors return ExceptionSchema format:
+{
+  "code": "ERROR_CODE",
+  "message": "Human-readable error description"
+}
+
+## Example Requests
+
+### Create VM:
+POST /vms
+{
+  "name": "test-vm-01",
+  "flavor_id": "550e8400-e29b-41d4-a716-446655440000",
+  "image_id": "660e8400-e29b-41d4-a716-446655440000"
+}
+
+### Attach Disk:
+POST /disks/{disk_id}/attach
+{
+  "vm_id": "770e8400-e29b-41d4-a716-446655440000"
+}
+"""
+
+    try:
+        requirements_agent = RequirementsAgent()
+        result = await requirements_agent.generate_api_test_cases(api_specification)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate API test cases: {str(e)}")
