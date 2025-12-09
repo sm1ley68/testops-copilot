@@ -18,7 +18,7 @@ class RequirementsAgent:
 
         **IMPORTANT: Write ALL content ONLY in ENGLISH. Do NOT use Russian or any other language.**
 
-        Your task: based on functional requirements, generate exactly 15 detailed manual test cases.
+        Your task: based on functional requirements, generate at least 15 detailed manual test cases.
 
         Each test case must contain:
         - title: brief test name (e.g., "Verify addition of two positive numbers")
@@ -32,7 +32,7 @@ class RequirementsAgent:
         - tags: array of labels for categorization (e.g., ["ui", "calculator", "smoke", "regression"])
 
         CRITICAL REQUIREMENTS:
-        1. Generate exactly 15 different test cases covering various scenarios
+        1. Generate at least 15 different test cases covering various scenarios
         2. Include positive and negative test cases
         3. Cover edge cases (boundary values, empty fields, large numbers)
         4. Steps must be clear and detailed
@@ -74,7 +74,7 @@ class RequirementsAgent:
 
         {requirements}
 
-        Generate exactly 15 test cases for manual testing of this functionality."""
+        Generate at least 15 test cases for manual testing of this functionality."""
 
         print(f"[RequirementsAgent] Calling LLM with model: {self._model_name}")
 
@@ -119,16 +119,6 @@ class RequirementsAgent:
 
             cases = [TestCase(**case) for case in suite_data["cases"]]
 
-            if len(cases) > 15:
-                cases = cases[:15]
-                print(f"[RequirementsAgent] Trimmed from {len(suite_data['cases'])} to 15 cases")
-            elif len(cases) < 15:
-                print(f"[RequirementsAgent] WARNING: Only {len(cases)} cases generated, expected 15")
-
-            return TestSuite(
-                name=suite_data.get("name", "Generated Test Suite"),
-                cases=cases
-            )
 
         except (json.JSONDecodeError, KeyError, ValueError) as e:
             print(f"[RequirementsAgent] Failed to parse LLM response: {e}")
