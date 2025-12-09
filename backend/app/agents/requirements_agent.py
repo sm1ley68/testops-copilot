@@ -14,14 +14,11 @@ class RequirementsAgent:
         self._model_name = "openai/gpt-oss-120b"
 
     async def generate_from_requirements_text(self, requirements: str) -> TestSuite:
-        """
-        Генерирует набор тест-кейсов (минимум 15) для UI калькулятора Cloud.ru.
-        """
         system_prompt = """You are an expert in UI web application testing and Allure TestOps.
 
         **IMPORTANT: Write ALL content ONLY in ENGLISH. Do NOT use Russian or any other language.**
 
-        Your task: based on functional requirements, generate at least 15 detailed manual test cases.
+        Your task: based on functional requirements, generate exactly 15 detailed manual test cases.
 
         Each test case must contain:
         - title: brief test name (e.g., "Verify addition of two positive numbers")
@@ -35,7 +32,7 @@ class RequirementsAgent:
         - tags: array of labels for categorization (e.g., ["ui", "calculator", "smoke", "regression"])
 
         CRITICAL REQUIREMENTS:
-        1. Generate at least 15 different test cases covering various scenarios
+        1. Generate exactly 15 different test cases covering various scenarios
         2. Include positive and negative test cases
         3. Cover edge cases (boundary values, empty fields, large numbers)
         4. Steps must be clear and detailed
@@ -77,7 +74,7 @@ class RequirementsAgent:
 
         {requirements}
 
-        Generate at least 15 test cases for manual testing of this functionality."""
+        Generate exactly 15 test cases for manual testing of this functionality."""
 
         print(f"[RequirementsAgent] Calling LLM with model: {self._model_name}")
 
@@ -108,8 +105,6 @@ class RequirementsAgent:
 
         # Парсинг JSON
         try:
-            # Убираем markdown блоки если есть
-            # Убираем markdown блоки если есть
             backticks = "```"
             if backticks + "json" in content:
                 content = content.split(backticks + "json").split(backticks).strip()[1]
@@ -122,7 +117,6 @@ class RequirementsAgent:
 
             print(f"[RequirementsAgent] Parsed {len(suite_data.get('cases', []))} cases from JSON")
 
-            # Преобразуем в Pydantic модели
             cases = [TestCase(**case) for case in suite_data["cases"]]
 
             return TestSuite(
