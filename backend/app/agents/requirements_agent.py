@@ -73,8 +73,8 @@ class RequirementsAgent:
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt}
                     ],
-                    "temperature": 0.7,  # немного креативности для разнообразия кейсов
-                    "max_tokens": 4000,  # достаточно для 15+ кейсов
+                    "temperature": 0.7,
+                    "max_tokens": 8000,
                 }
             )
 
