@@ -128,7 +128,7 @@ class RequirementsAgent:
 
             # Если LLM вернул массив напрямую
             if isinstance(suite_data, list):
-                for case in suite_data.get("cases", []):
+                for case in suite_data:
                     if isinstance(case, dict):  # Проверка что это словарь
                         priority = str(case.get("priority", "NORMAL")).upper().strip()
                         if priority not in ["CRITICAL", "HIGH", "MEDIUM", "NORMAL", "LOW"]:
@@ -268,7 +268,7 @@ Minimum 15-20 test cases required."""
 
             # Если LLM вернул массив напрямую
             if isinstance(suite_data, list):
-                for case in suite_data.get("cases", []):
+                for case in suite_data:
                     if isinstance(case, dict):  # Проверка что это словарь
                         priority = str(case.get("priority", "NORMAL")).upper().strip()
                         if priority not in ["CRITICAL", "HIGH", "MEDIUM", "NORMAL", "LOW"]:
