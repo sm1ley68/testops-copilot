@@ -221,8 +221,8 @@ Minimum 15-20 test cases required."""
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt}
                     ],
-                    "temperature": 0.7,
-                    "max_tokens": 13000,
+                    "temperature": 0.8,
+                    "max_tokens": 20000,
                 }
             )
 
