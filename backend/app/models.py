@@ -27,7 +27,7 @@ class TestCase(BaseModel):
     description: str
     steps: List[str]
     expected_result: str
-    priority: Literal["CRITICAL", "NORMAL", "LOW"] = "NORMAL"
+    priority: Literal["CRITICAL", "HIGH", "NORMAL", "LOW"] = "NORMAL"
     tags: List[str] = []
 
 
