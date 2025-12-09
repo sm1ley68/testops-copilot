@@ -1,10 +1,14 @@
-from openai import OpenAI
+import httpx
 
 from app.config import settings
 
 
-def get_llm_client() -> OpenAI:
-    return OpenAI(
-        api_key=settings.cloudru_api_token,
+def get_llm_client() -> httpx.Client:
+    return httpx.Client(
         base_url=settings.cloudru_api_url,
+        headers={
+            "Authorization": f"Bearer {settings.cloudru_api_token}",
+            "Content-Type": "application/json",
+        },
+        timeout=30.0,
     )
