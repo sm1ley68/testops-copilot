@@ -115,15 +115,27 @@ class RequirementsAgent:
 
             suite_data = json.loads(content)
 
-            print(f"[RequirementsAgent] Parsed {len(suite_data.get('cases', []))} cases from JSON")
+            # Если LLM вернул массив напрямую
+            if isinstance(suite_data, list):
+                print(f"[RequirementsAgent] Parsed {len(suite_data)} UI cases from JSON (array format)")
+                cases = [TestCase(**case) for case in suite_data]
+                return TestSuite(
+                    name="Test Suite for UI Calculator",
+                    description="Manual test cases for UI testing",
+                    cases=cases
+                )
+            # Если вернул объект с полем cases
+            elif isinstance(suite_data, dict):
+                print(f"[RequirementsAgent] Parsed {len(suite_data.get('cases', []))} UI cases from JSON (dict format)")
+                cases = [TestCase(**case) for case in suite_data.get("cases", [])]
+                return TestSuite(
+                    name=suite_data.get("name", "Generated Test Suite"),
+                    description=suite_data.get("description", ""),
+                    cases=cases
+                )
+            else:
+                raise ValueError(f"Unexpected response format: {type(suite_data)}")
 
-            cases = [TestCase(**case) for case in suite_data["cases"]]
-
-            return TestSuite(
-                name=suite_data.get("name", "Generated Test Suite"),
-                description=suite_data.get("description", ""),
-                cases=cases
-            )
 
         except (json.JSONDecodeError, KeyError, ValueError) as e:
             print(f"[RequirementsAgent] Failed to parse LLM response: {e}")
