@@ -119,4 +119,7 @@ POST /disks/{disk_id}/attach
         result = await requirements_agent.generate_api_test_cases(api_specification)
         return result
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to generate API test cases: {str(e)}")
+

@@ -113,7 +113,7 @@ class RequirementsAgent:
         try:
             backticks = "```"
             if backticks + "json" in content:
-                content = content.split(backticks + "json").split(backticks).strip()[1]
+                content = content.split(backticks + "json")[1].split(backticks)[0].strip()
             elif backticks in content:
                 parts = content.split(backticks)
                 if len(parts) >= 2:
