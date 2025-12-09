@@ -92,11 +92,13 @@ class RequirementsAgent:
 
         # Парсинг JSON
         try:
-            # Иногда LLM добавляет markdown блоки ``````
+            # Убираем markdown блоки если есть
             if "```
                 content = content.split("```json").split("```
                 elif "```" in content:
-                content = content.split("``````")[0].strip()
+                parts = content.split("```
+                if len(parts) >= 2:
+                    content = parts.strip()[1]
 
                 suite_data = json.loads(content)
 
@@ -114,3 +116,4 @@ class RequirementsAgent:
             print(f"[RequirementsAgent] Failed to parse LLM response: {e}")
             print(f"[RequirementsAgent] Full content:\n{content}")
             raise Exception(f"Failed to parse LLM response: {e}\nContent: {content[:1000]}")
+
