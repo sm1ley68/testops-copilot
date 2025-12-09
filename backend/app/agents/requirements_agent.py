@@ -119,6 +119,10 @@ class RequirementsAgent:
 
             cases = [TestCase(**case) for case in suite_data["cases"]]
 
+            if len(cases) > 15:
+                cases = cases[:15]  # берём первые 15
+                print(f"[RequirementsAgent] Trimmed to exactly 15 cases")
+
             return TestSuite(
                 name=suite_data.get("name", "Generated Test Suite"),
                 cases=cases
