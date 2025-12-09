@@ -93,19 +93,21 @@ class RequirementsAgent:
         # Парсинг JSON
         try:
             # Убираем markdown блоки если есть
-            if "```
-                content = content.split("```json").split("```
-                elif "```" in content:
-                parts = content.split("```
+            # Убираем markdown блоки если есть
+            backticks = "```"
+            if backticks + "json" in content:
+                content = content.split(backticks + "json").split(backticks).strip()[1]
+            elif backticks in content:
+                parts = content.split(backticks)
                 if len(parts) >= 2:
                     content = parts.strip()[1]
 
-                suite_data = json.loads(content)
+            suite_data = json.loads(content)
 
-                print(f"[RequirementsAgent] Parsed {len(suite_data.get('cases', []))} cases from JSON")
+            print(f"[RequirementsAgent] Parsed {len(suite_data.get('cases', []))} cases from JSON")
 
-                # Преобразуем в Pydantic модели
-                cases = [TestCase(**case) for case in suite_data["cases"]]
+            # Преобразуем в Pydantic модели
+            cases = [TestCase(**case) for case in suite_data["cases"]]
 
             return TestSuite(
                 name=suite_data.get("name", "Generated Test Suite"),
