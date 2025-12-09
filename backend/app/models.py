@@ -48,3 +48,19 @@ class CoverageReport(BaseModel):
     missing_features: List[str]
     duplicates: List[str]
     summary: str
+
+
+class ValidationIssue(BaseModel):
+    test_case_id: str
+    test_case_title: str
+    severity: Literal["critical", "warning", "info"]
+    issue: str
+    recommendation: str
+
+
+class ValidationReport(BaseModel):
+    total_cases: int
+    passed: int
+    failed: int
+    issues: List[ValidationIssue]
+    summary: str
