@@ -89,7 +89,7 @@ class RequirementsAgent:
                         {"role": "user", "content": user_prompt}
                     ],
                     "temperature": 0.8,
-                    "max_tokens": 13000,
+                    "max_tokens": 20000,
                 }
             )
 
@@ -100,8 +100,14 @@ class RequirementsAgent:
         data = resp.json()
         content = data["choices"][0]["message"]["content"]
 
-        print(f"[RequirementsAgent] LLM response length: {len(content)} characters")
-        print(f"[RequirementsAgent] First 500 chars:\n{content[:500]}")
+        print(f"[RequirementsAgent] API response length: {len(content)} characters")
+
+        # Если JSON обрезан - пытаемся восстановить
+        if not content.strip().endswith('}') and not content.strip().endswith(']'):
+            print(f"[RequirementsAgent] Warning: Response appears truncated, attempting to fix")
+            # Добавляем закрывающие скобки если их нет
+            if '[' in content and ']' not in content:
+                content = content + ']'
 
         # Парсинг JSON
         try:
