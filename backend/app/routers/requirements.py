@@ -13,7 +13,8 @@ class RequirementsRequest(BaseModel):
 @router.post("/ui", response_model=TestSuite)
 async def generate_ui_test_cases(req: RequirementsRequest):
     """
-    Генерирует минимум 15 UI тест-кейсов на основе текстовых требований.
+    Генерирует минимум 15 UI тест-кейсов напрямую через RequirementsAgent.
+    Возвращает полный TestSuite с массивом cases.
     """
     agent = RequirementsAgent()
     suite = await agent.generate_from_requirements_text(req.requirements_text)
