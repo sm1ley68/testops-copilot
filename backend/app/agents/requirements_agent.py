@@ -229,15 +229,26 @@ Minimum 15-20 test cases required."""
 
             suite_data = json.loads(content)
 
-            print(f"[RequirementsAgent] Parsed {len(suite_data.get('cases', []))} API test cases")
+            print(f"[RequirementsAgent] Parsed API response type: {type(suite_data)}")
 
-            cases = [TestCase(**case) for case in suite_data["cases"]]
-
-            return TestSuite(
-                name=suite_data.get("name", "Evolution Compute API Test Suite"),
-                description=suite_data.get("description", "Manual test cases for VMs, Disks, and Flavors API"),
-                cases=cases
-            )
+            # Если LLM вернул массив напрямую
+            if isinstance(suite_data, list):
+                cases = [TestCase(**case) for case in suite_data]
+                return TestSuite(
+                    name="Evolution Compute API Test Suite",
+                    description="Manual test cases for VMs, Disks, and Flavors API",
+                    cases=cases
+                )
+            # Если вернул объект с полем cases
+            elif isinstance(suite_data, dict):
+                cases = [TestCase(**case) for case in suite_data.get("cases", [])]
+                return TestSuite(
+                    name=suite_data.get("name", "Evolution Compute API Test Suite"),
+                    description=suite_data.get("description", "Manual test cases for VMs, Disks, and Flavors API"),
+                    cases=cases
+                )
+            else:
+                raise ValueError(f"Unexpected response format: {type(suite_data)}")
 
         except (json.JSONDecodeError, KeyError, ValueError) as e:
             print(f"[RequirementsAgent] Failed to parse API response: {e}")
