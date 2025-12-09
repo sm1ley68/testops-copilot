@@ -181,7 +181,11 @@ class RequirementsAgent:
         4. Verify response status codes and data structure
         5. Test edge cases (invalid IDs, missing parameters, authorization errors)
         6. Use AAA pattern (Arrange-Act-Assert) in steps
-        7. Generate at least 15 test cases covering all endpoints
+        7. Generate exactly 15 ultra-concise test cases. Requirements:
+    - Each test case description: maximum 50 words
+    - Steps: maximum 3 steps, each under 20 words
+    - Expected result: maximum 30 words
+    - Use brief, direct language without extra explanations
 
         Return ONLY valid JSON in format:
         {
@@ -239,7 +243,7 @@ Minimum 15-20 test cases required."""
                         {"role": "user", "content": user_prompt}
                     ],
                     "temperature": 0.7,
-                    "max_tokens": 30000,
+                    "max_tokens": 50000,
                 }
             )
 
