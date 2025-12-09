@@ -63,6 +63,8 @@ class RequirementsAgent:
 
 Сгенерируй минимум 15 тест-кейсов для ручного тестирования этого функционала."""
 
+        print(f"[RequirementsAgent] Calling LLM with model: {self._model_name}")
+
         # Вызов LLM
         with get_llm_client() as client:
             resp = client.post(
@@ -79,10 +81,14 @@ class RequirementsAgent:
             )
 
         if resp.status_code != 200:
+            print(f"[RequirementsAgent] LLM API error: {resp.status_code}")
             raise Exception(f"LLM API error: {resp.status_code} - {resp.text}")
 
         data = resp.json()
         content = data["choices"][0]["message"]["content"]
+
+        print(f"[RequirementsAgent] LLM response length: {len(content)} characters")
+        print(f"[RequirementsAgent] First 500 chars:\n{content[:500]}")
 
         # Парсинг JSON
         try:
@@ -94,6 +100,8 @@ class RequirementsAgent:
 
                 suite_data = json.loads(content)
 
+                print(f"[RequirementsAgent] Parsed {len(suite_data.get('cases', []))} cases from JSON")
+
                 # Преобразуем в Pydantic модели
                 cases = [TestCase(**case) for case in suite_data["cases"]]
 
@@ -103,4 +111,6 @@ class RequirementsAgent:
             )
 
         except (json.JSONDecodeError, KeyError, ValueError) as e:
-            raise Exception(f"Failed to parse LLM response: {e}\nContent: {content}")
+            print(f"[RequirementsAgent] Failed to parse LLM response: {e}")
+            print(f"[RequirementsAgent] Full content:\n{content}")
+            raise Exception(f"Failed to parse LLM response: {e}\nContent: {content[:1000]}")
