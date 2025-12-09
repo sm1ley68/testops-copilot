@@ -88,8 +88,8 @@ class RequirementsAgent:
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt}
                     ],
-                    "temperature": 0.7,
-                    "max_tokens": 25000,
+                    "temperature": 0.8,
+                    "max_tokens": 20000,
                 }
             )
 
@@ -129,7 +129,7 @@ class RequirementsAgent:
             # Если LLM вернул массив напрямую
             if isinstance(suite_data, list):
                 for case in suite_data:
-                    if isinstance(case, dict):  # Проверка что это словарь
+                    if isinstance(case, dict):
                         priority = str(case.get("priority", "NORMAL")).upper().strip()
                         if priority not in ["CRITICAL", "HIGH", "MEDIUM", "NORMAL", "LOW"]:
                             priority = "NORMAL"
@@ -144,7 +144,7 @@ class RequirementsAgent:
             # Если вернул объект с полем cases
             elif isinstance(suite_data, dict):
                 for case in suite_data.get("cases", []):
-                    if isinstance(case, dict):  # ← ДОБАВИТЬ
+                    if isinstance(case, dict):
                         priority = str(case.get("priority", "NORMAL")).upper().strip()
                         if priority not in ["CRITICAL", "HIGH", "MEDIUM", "NORMAL", "LOW"]:
                             priority = "NORMAL"
@@ -238,8 +238,8 @@ Minimum 15-20 test cases required."""
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt}
                     ],
-                    "temperature": 0.8,
-                    "max_tokens": 20000,
+                    "temperature": 0.7,
+                    "max_tokens": 30000,
                 }
             )
 
@@ -269,7 +269,7 @@ Minimum 15-20 test cases required."""
             # Если LLM вернул массив напрямую
             if isinstance(suite_data, list):
                 for case in suite_data:
-                    if isinstance(case, dict):  # Проверка что это словарь
+                    if isinstance(case, dict):
                         priority = str(case.get("priority", "NORMAL")).upper().strip()
                         if priority not in ["CRITICAL", "HIGH", "MEDIUM", "NORMAL", "LOW"]:
                             priority = "NORMAL"
@@ -283,7 +283,7 @@ Minimum 15-20 test cases required."""
             # Если вернул объект с полем cases
             elif isinstance(suite_data, dict):
                 for case in suite_data.get("cases", []):
-                    if isinstance(case, dict):  # ← ДОБАВИТЬ
+                    if isinstance(case, dict):
                         priority = str(case.get("priority", "NORMAL")).upper().strip()
                         if priority not in ["CRITICAL", "HIGH", "MEDIUM", "NORMAL", "LOW"]:
                             priority = "NORMAL"
