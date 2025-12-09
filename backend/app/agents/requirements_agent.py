@@ -232,11 +232,15 @@ Minimum 15-20 test cases required."""
             )
 
         if resp.status_code != 200:
-            print(f"[RequirementsAgent] API LLM error: {resp.status_code}")
+            print(f"[RequirementsAgent] LLM API error: {resp.status_code}")
             raise Exception(f"LLM API error: {resp.status_code} - {resp.text}")
+        print(f"[RequirementsAgent] Response status: {resp.status_code}")
+        print(f"[RequirementsAgent] Response headers: {resp.headers}")
+        print(f"[RequirementsAgent] Response text length: {len(resp.text)}")
+        print(f"[RequirementsAgent] First 500 chars: {resp.text[:500]}")
 
         data = resp.json()
-        content = data["choices"]["message"]["content"]
+        content = data["choices"][0]["message"]["content"]
 
         print(f"[RequirementsAgent] API response length: {len(content)} characters")
 
