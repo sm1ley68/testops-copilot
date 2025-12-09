@@ -3,7 +3,7 @@ from app.llm_client import get_llm_client
 
 
 class ValidationAgent:
-    def __init__(self, model_name: str = "zai-org/GLM-4.6"):
+    def __init__(self, model_name: str = "openai/gpt-oss-120b"):
         self._model_name = model_name
 
     async def validate_test_suite(self, suite: TestSuite) -> ValidationReport:
