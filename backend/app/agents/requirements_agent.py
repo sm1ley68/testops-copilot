@@ -11,7 +11,7 @@ class RequirementsAgent:
     """
 
     def __init__(self):
-        self._model_name = "gpt-oss-120b"
+        self._model_name = "openai/gpt-oss-120b"
 
     async def generate_from_requirements_text(self, requirements: str) -> TestSuite:
         """
