@@ -115,10 +115,16 @@ POST /disks/{disk_id}/attach
 """
 
     try:
+        print("[DEBUG] ===== Starting API test case generation =====")
         requirements_agent = RequirementsAgent()
+        print(f"[DEBUG] Agent created: {requirements_agent}")
         result = await requirements_agent.generate_api_test_cases(api_specification)
+        print(f"[DEBUG] Result type: {type(result)}, cases: {len(result.cases) if result else 'None'}")
         return result
     except Exception as e:
+        print(f"[DEBUG] ===== EXCEPTION CAUGHT =====")
+        print(f"[DEBUG] Exception type: {type(e)}")
+        print(f"[DEBUG] Exception message: {str(e)}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to generate API test cases: {str(e)}")
