@@ -142,6 +142,11 @@ class RequirementsAgent:
                 )
             # Если вернул объект с полем cases
             elif isinstance(suite_data, dict):
+                for case in suite_data.get("cases", []):
+                    priority = str(case.get("priority", "NORMAL")).upper().strip()
+                    if priority not in ["CRITICAL", "HIGH", "MEDIUM", "NORMAL", "LOW"]:
+                        priority = "NORMAL"
+                    case["priority"] = priority
                 print(f"[RequirementsAgent] Parsed {len(suite_data.get('cases', []))} UI cases from JSON (dict format)")
                 cases = [TestCase(**case) for case in suite_data.get("cases", [])]
                 return TestSuite(
@@ -278,12 +283,7 @@ Minimum 15-20 test cases required."""
                 )
             # Если вернул объект с полем cases
             elif isinstance(suite_data, dict):
-                for case in suite_data:
-                    priority = str(case.get("priority", "NORMAL")).upper().strip()
-                    if priority not in ["CRITICAL", "HIGH", "MEDIUM", "NORMAL", "LOW"]:
-                        priority = "NORMAL"
-                    case["priority"] = priority
-                for case in suite_data:
+                for case in suite_data.get("cases", []):
                     priority = str(case.get("priority", "NORMAL")).upper().strip()
                     if priority not in ["CRITICAL", "HIGH", "MEDIUM", "NORMAL", "LOW"]:
                         priority = "NORMAL"
