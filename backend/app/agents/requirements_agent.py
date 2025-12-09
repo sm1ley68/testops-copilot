@@ -53,7 +53,7 @@ class RequirementsAgent:
             ...
           ]
         }
-        
+
         Example of a well-structured test case:
         {
           "title": "Verify division by zero error handling",
@@ -67,7 +67,7 @@ class RequirementsAgent:
           "priority": "CRITICAL",
           "tags": ["ui", "calculator", "negative", "error-handling"]
         }
-        
+
         Do NOT add any comments or text before/after JSON."""
 
         user_prompt = f"""Functional requirements for Cloud.ru UI calculator:
@@ -119,122 +119,127 @@ class RequirementsAgent:
 
             cases = [TestCase(**case) for case in suite_data["cases"]]
 
+            return TestSuite(
+                name=suite_data.get("name", "Generated Test Suite"),
+                description=suite_data.get("description", ""),
+                cases=cases
+            )
 
         except (json.JSONDecodeError, KeyError, ValueError) as e:
             print(f"[RequirementsAgent] Failed to parse LLM response: {e}")
             print(f"[RequirementsAgent] Full content:\n{content}")
             raise Exception(f"Failed to parse LLM response: {e}\nContent: {content[:1000]}")
 
-        async def generate_api_test_cases(self, api_spec: str) -> TestSuite:
-            """Генерирует тест-кейсы для API на основе спецификации."""
+    async def generate_api_test_cases(self, api_spec: str) -> TestSuite:
+        """Генерирует тест-кейсы для API на основе спецификации."""
 
-            system_prompt = """You are a QA automation expert specializing in REST API testing.
+        system_prompt = """You are a QA automation expert specializing in REST API testing.
 
-            **IMPORTANT: Write ALL content ONLY in ENGLISH.**
+        **IMPORTANT: Write ALL content ONLY in ENGLISH.**
 
-            Generate comprehensive manual test cases in Allure TestOps as Code format for the provided API specification.
+        Generate comprehensive manual test cases in Allure TestOps as Code format for the provided API specification.
 
-            Requirements:
-            1. Cover all CRUD operations (GET, POST, PATCH, DELETE)
-            2. Include authentication testing (Bearer token)
-            3. Test both positive and negative scenarios
-            4. Verify response status codes and data structure
-            5. Test edge cases (invalid IDs, missing parameters, authorization errors)
-            6. Use AAA pattern (Arrange-Act-Assert) in steps
-            7. Generate at least 15 test cases covering all endpoints
+        Requirements:
+        1. Cover all CRUD operations (GET, POST, PATCH, DELETE)
+        2. Include authentication testing (Bearer token)
+        3. Test both positive and negative scenarios
+        4. Verify response status codes and data structure
+        5. Test edge cases (invalid IDs, missing parameters, authorization errors)
+        6. Use AAA pattern (Arrange-Act-Assert) in steps
+        7. Generate at least 15 test cases covering all endpoints
 
-            Return ONLY valid JSON in format:
+        Return ONLY valid JSON in format:
+        {
+          "name": "API Test Suite Name",
+          "cases": [
             {
-              "name": "API Test Suite Name",
-              "cases": [
-                {
-                  "title": "Clear test case title describing the scenario",
-                  "description": "Detailed description of what is being tested and why",
-                  "steps": [
-                    "Arrange: Prepare authentication token and test data (e.g., valid UUIDv4)",
-                    "Act: Send HTTP request: METHOD /endpoint with headers and body",
-                    "Assert: Verify HTTP status code, response structure, and data"
-                  ],
-                  "expected_result": "Expected API response status, structure, and behavior",
-                  "priority": "CRITICAL",
-                  "tags": ["api", "vms", "positive", "smoke"]
-                },
-                ...
-              ]
-            }
+              "title": "Clear test case title describing the scenario",
+              "description": "Detailed description of what is being tested and why",
+              "steps": [
+                "Arrange: Prepare authentication token and test data (e.g., valid UUIDv4)",
+                "Act: Send HTTP request: METHOD /endpoint with headers and body",
+                "Assert: Verify HTTP status code, response structure, and data"
+              ],
+              "expected_result": "Expected API response status, structure, and behavior",
+              "priority": "CRITICAL",
+              "tags": ["api", "vms", "positive", "smoke"]
+            },
+            ...
+          ]
+        }
 
-            Do NOT add any comments or text before/after JSON."""
+        Do NOT add any comments or text before/after JSON."""
 
-            user_prompt = f"""Generate manual test cases for the following API specification:
+        user_prompt = f"""Generate manual test cases for the following API specification:
 
-    {api_spec}
+{api_spec}
 
-    Requirements:
-    - Endpoint base URL: https://compute.api.cloud.ru
-    - Authentication: Bearer userPlaneApiToken (required in Authorization header)
-    - ID Format: All IDs must be valid UUIDv4
-    - Error responses: Return ExceptionSchema format
+Requirements:
+- Endpoint base URL: https://compute.api.cloud.ru
+- Authentication: Bearer userPlaneApiToken (required in Authorization header)
+- ID Format: All IDs must be valid UUIDv4
+- Error responses: Return ExceptionSchema format
 
-    Generate comprehensive test cases covering:
-    1. VMs endpoints: GET, POST, PATCH, DELETE operations + start/stop/reboot actions
-    2. Disks endpoints: CRUD operations + attach/detach to VM
-    3. Flavors endpoints: GET list and specific flavor details
-    4. Authentication scenarios: valid token, missing token, invalid token
-    5. Positive scenarios: valid requests with correct data
-    6. Negative scenarios: invalid IDs, missing required fields, malformed requests
-    7. Edge cases: non-existent resources (404), duplicate operations
+Generate comprehensive test cases covering:
+1. VMs endpoints: GET, POST, PATCH, DELETE operations + start/stop/reboot actions
+2. Disks endpoints: CRUD operations + attach/detach to VM
+3. Flavors endpoints: GET list and specific flavor details
+4. Authentication scenarios: valid token, missing token, invalid token
+5. Positive scenarios: valid requests with correct data
+6. Negative scenarios: invalid IDs, missing required fields, malformed requests
+7. Edge cases: non-existent resources (404), duplicate operations
 
-    Minimum 15-20 test cases required."""
+Minimum 15-20 test cases required."""
 
-            print(f"[RequirementsAgent] Generating API test cases with model: {self._model_name}")
+        print(f"[RequirementsAgent] Generating API test cases with model: {self._model_name}")
 
-            # Вызов LLM
-            with get_llm_client() as client:
-                resp = client.post(
-                    "/chat/completions",
-                    json={
-                        "model": self._model_name,
-                        "messages": [
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": user_prompt}
-                        ],
-                        "temperature": 0.7,
-                        "max_tokens": 13000,
-                    }
-                )
+        # Вызов LLM
+        with get_llm_client() as client:
+            resp = client.post(
+                "/chat/completions",
+                json={
+                    "model": self._model_name,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    "temperature": 0.7,
+                    "max_tokens": 13000,
+                }
+            )
 
-            if resp.status_code != 200:
-                print(f"[RequirementsAgent] LLM API error: {resp.status_code}")
-                raise Exception(f"LLM API error: {resp.status_code} - {resp.text}")
+        if resp.status_code != 200:
+            print(f"[RequirementsAgent] API LLM error: {resp.status_code}")
+            raise Exception(f"LLM API error: {resp.status_code} - {resp.text}")
 
-            data = resp.json()
-            content = data["choices"]["message"]["content"]
+        data = resp.json()
+        content = data["choices"]["message"]["content"]
 
-            print(f"[RequirementsAgent] API LLM response length: {len(content)} characters")
+        print(f"[RequirementsAgent] API response length: {len(content)} characters")
 
-            # Парсинг JSON
-            try:
-                backticks = "```"
-                if backticks + "json" in content:
-                    content = content.split(backticks + "json")[1].split(backticks)[0].strip()
-                elif backticks in content:
-                    parts = content.split(backticks)
-                    if len(parts) >= 2:
-                        content = parts[1].strip()
+        # Парсинг JSON
+        try:
+            backticks = "```"
+            if backticks + "json" in content:
+                content = content.split(backticks + "json")[1].split(backticks)[0].strip()
+            elif backticks in content:
+                parts = content.split(backticks)
+                if len(parts) >= 2:
+                    content = parts[1].strip()
 
-                suite_data = json.loads(content)
+            suite_data = json.loads(content)
 
-                print(f"[RequirementsAgent] Parsed {len(suite_data.get('cases', []))} API test cases from JSON")
+            print(f"[RequirementsAgent] Parsed {len(suite_data.get('cases', []))} API test cases")
 
-                cases = [TestCase(**case) for case in suite_data["cases"]]
+            cases = [TestCase(**case) for case in suite_data["cases"]]
 
-                return TestSuite(
-                    name=suite_data.get("name", "Evolution Compute API Test Suite"),
-                    description=suite_data.get("description", "Manual test cases for VMs, Disks, and Flavors API"),
-                    cases=cases
-                )
+            return TestSuite(
+                name=suite_data.get("name", "Evolution Compute API Test Suite"),
+                description=suite_data.get("description", "Manual test cases for VMs, Disks, and Flavors API"),
+                cases=cases
+            )
 
-            except (json.JSONDecodeError, KeyError, ValueError) as e:
-                print(f"[RequirementsAgent] Failed to parse API LLM response: {e}")
-                print(f"[RequirementsAgent] Full content:\n{content}")
-                raise Exception(f"Failed to parse LLM response: {e}\nContent: {content[:1000]}")
+        except (json.JSONDecodeError, KeyError, ValueError) as e:
+            print(f"[RequirementsAgent] Failed to parse API response: {e}")
+            print(f"[RequirementsAgent] Full content:\n{content}")
+            raise Exception(f"Failed to parse LLM response: {e}\nContent: {content[:1000]}")
