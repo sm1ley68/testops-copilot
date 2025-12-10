@@ -135,7 +135,7 @@ Return ONLY Python code, no markdown, no explanations."""
             raise Exception(f"LLM API error: {resp.status_code} - {resp.text}")
 
         data = resp.json()
-        pytest_code = data["choices"]["message"]["content"]
+        pytest_code = data["choices"][0]["message"]["content"]
 
         if pytest_code.startswith("```python"):
             pytest_code = pytest_code.replace("``````", "").strip()
