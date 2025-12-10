@@ -19,6 +19,13 @@ class UiSourcePayload(BaseModel):
     requirements_text: Optional[str] = None
 
 
+# ✅ НОВАЯ МОДЕЛЬ для API спецификации
+class ApiSpecPayload(BaseModel):
+    swagger_url: Optional[str] = None  # URL на swagger.json/yaml
+    swagger_text: Optional[str] = None  # Или текст спецификации
+    requirements_text: Optional[str] = None  # Дополнительные требования
+
+
 @router.post("/ui/full", response_model=CoverageReport)
 async def generate_full_ui_flow(payload: UiSourcePayload):
     import traceback
@@ -41,21 +48,37 @@ async def generate_full_ui_flow(payload: UiSourcePayload):
         raise HTTPException(status_code=500, detail=str(exc))
 
 
-@router.post("/api/vms", response_model=TestSuite)
-async def generate_api_vm_test_cases():
+@router.post("/api/vms", response_model=dict)
+async def generate_api_vm_test_cases(payload: ApiSpecPayload):
     """
-    Генерирует ручные тест-кейсы для Cloud.ru Evolution Compute API.
-    Покрывает VMs, Disks, Flavors endpoints согласно кейсу 2 из ТЗ.
+    Генерирует ручные тест-кейсы для REST API на основе OpenAPI/Swagger спецификации.
 
-    Генерирует минимум 15 тест-кейсов с покрытием:
-    - CRUD операции для VMs (create, read, update, delete, start, stop, reboot)
-    - CRUD операции для Disks + attach/detach к VM
-    - GET операции для Flavors (список и детали конфигураций)
-    - Аутентификация (Bearer token) и обработка ошибок
-    - Позитивные и негативные сценарии
+    Пользователь может передать:
+    - swagger_url: URL на swagger.json/yaml (например https://compute.api.cloud.ru/swagger.json)
+    - swagger_text: Текст OpenAPI спецификации целиком
+    - requirements_text: Дополнительные требования (необязательно)
+
+    Если ничего не передано - используется дефолтная спецификация Cloud.ru VMs API.
+
+    Генерирует минимум 15 тест-кейсов с покрытием CRUD, auth, errors.
     """
 
-    api_specification = """
+    try:
+        print("[DEBUG] ===== Starting API test case generation =====")
+        print(f"[DEBUG] swagger_url={payload.swagger_url}")
+        print(f"[DEBUG] swagger_text length={len(payload.swagger_text or '')}")
+        print(f"[DEBUG] requirements_text={payload.requirements_text}")
+
+        requirements_agent = RequirementsAgent()
+
+        if payload.swagger_url or payload.swagger_text:
+            result = await requirements_agent.generate_from_api_spec(
+                swagger_url=payload.swagger_url,
+                swagger_text=payload.swagger_text,
+                requirements_text=payload.requirements_text
+            )
+        else:
+            api_specification = """
 # Cloud.ru Evolution Compute API v3
 
 ## Base Information
@@ -99,13 +122,6 @@ async def generate_api_vm_test_cases():
 - 409 Conflict - Operation not allowed in current state (e.g., delete attached disk)
 - 500 Internal Server Error - Server-side error
 
-## Error Response Format
-All errors return ExceptionSchema format:
-{
-  "code": "ERROR_CODE",
-  "message": "Human-readable error description"
-}
-
 ## Example Requests
 
 ### Create VM:
@@ -122,14 +138,20 @@ POST /disks/{disk_id}/attach
   "vm_id": "770e8400-e29b-41d4-a716-446655440000"
 }
 """
+            result = await requirements_agent.generate_api_test_cases(
+                api_specification,
+                requirements_text=payload.requirements_text
+            )
 
-    try:
-        print("[DEBUG] ===== Starting API test case generation =====")
-        requirements_agent = RequirementsAgent()
-        print(f"[DEBUG] Agent created: {requirements_agent}")
-        result = await requirements_agent.generate_api_test_cases(api_specification)
-        print(f"[DEBUG] Result type: {type(result)}, cases: {len(result.cases) if result else 'None'}")
-        return result
+        print(f"[DEBUG] Result: {len(result.cases)} test cases generated")
+
+        return {
+            "test_suite": result.dict(),
+            "test_count": len(result.cases),
+            "source": payload.swagger_url if payload.swagger_url else (
+                "inline spec" if payload.swagger_text else "default Cloud.ru VMs API")
+        }
+
     except Exception as e:
         import traceback
         traceback.print_exc()

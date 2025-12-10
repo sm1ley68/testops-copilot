@@ -1,9 +1,12 @@
 import json
-from typing import List
+from typing import List, Optional
+import httpx
+import yaml
 from app.models import TestSuite, TestCase
 from app.llm_client import get_llm_client
 from app.config import settings
 from app.models import UiModel
+
 
 class RequirementsAgent:
     """
@@ -114,11 +117,11 @@ class RequirementsAgent:
         try:
             backticks = "```"
             if backticks + "json" in content:
-                content = content.split(backticks + "json")[1].split(backticks)[0].strip()
+                content = content.split(backticks + "json").split(backticks).strip()
             elif backticks in content:
                 parts = content.split(backticks)
                 if len(parts) >= 2:
-                    content = parts.strip()[1]
+                    content = parts.strip()
 
             suite_data = json.loads(content)
 
@@ -161,9 +164,8 @@ class RequirementsAgent:
             print(f"[RequirementsAgent] Full content:\n{content}")
             raise Exception(f"Failed to parse LLM response: {e}\nContent: {content[:1000]}")
 
-
-    async def generate_api_test_cases(self, api_spec: str) -> TestSuite:
-        """Генерирует тест-кейсы для API на основе спецификации."""
+    async def generate_api_test_cases(self, api_spec: str, requirements_text: Optional[str] = None) -> TestSuite:
+        """Генерирует тест-кейсы для API на основе текстовой спецификации."""
 
         system_prompt = """You are a QA automation expert specializing in REST API testing.
 
@@ -210,20 +212,8 @@ class RequirementsAgent:
 
 {api_spec}
 
-Requirements:
-- Endpoint base URL: https://compute.api.cloud.ru
-- Authentication: Bearer userPlaneApiToken (required in Authorization header)
-- ID Format: All IDs must be valid UUIDv4
-- Error responses: Return ExceptionSchema format
-
-Generate comprehensive test cases covering:
-1. VMs endpoints: GET, POST, PATCH, DELETE operations + start/stop/reboot actions
-2. Disks endpoints: CRUD operations + attach/detach to VM
-3. Flavors endpoints: GET list and specific flavor details
-4. Authentication scenarios: valid token, missing token, invalid token
-5. Positive scenarios: valid requests with correct data
-6. Negative scenarios: invalid IDs, missing required fields, malformed requests
-7. Edge cases: non-existent resources (404), duplicate operations
+Additional requirements:
+{requirements_text or 'Generate comprehensive test cases covering all endpoints, authentication, positive/negative scenarios, and edge cases.'}
 
 Minimum 15-20 test cases required."""
 
@@ -249,7 +239,7 @@ Minimum 15-20 test cases required."""
             raise Exception(f"LLM API error: {resp.status_code} - {resp.text}")
 
         data = resp.json()
-        content = data["choices"][0]["message"]["content"]
+        content = data["choices"]["message"]["content"]
 
         print(f"[RequirementsAgent] API response length: {len(content)} characters")
 
@@ -303,6 +293,230 @@ Minimum 15-20 test cases required."""
             print(f"[RequirementsAgent] Full content:\n{content}")
             raise Exception(f"Failed to parse LLM response: {e}\nContent: {content[:1000]}")
 
+    async def generate_from_api_spec(
+            self,
+            swagger_url: Optional[str] = None,
+            swagger_text: Optional[str] = None,
+            requirements_text: Optional[str] = None
+    ) -> TestSuite:
+        """
+        Генерирует тест-кейсы из OpenAPI/Swagger спецификации.
+        Принимает либо URL на swagger.json/yaml, либо текст спецификации.
+        """
+        print(f"[RequirementsAgent] generate_from_api_spec called")
+        print(f"[RequirementsAgent] swagger_url={swagger_url}, has_text={bool(swagger_text)}")
+
+        # 1. Получаем спецификацию
+        spec_content = ""
+
+        if swagger_url:
+            print(f"[RequirementsAgent] Fetching spec from URL: {swagger_url}")
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                try:
+                    response = await client.get(swagger_url)
+                    response.raise_for_status()
+                    spec_content = response.text
+                    print(f"[RequirementsAgent] Fetched {len(spec_content)} bytes")
+                except httpx.HTTPStatusError as e:
+                    raise Exception(f"Failed to fetch Swagger from URL: {e.response.status_code} - {e.response.text}")
+                except Exception as e:
+                    raise Exception(f"Failed to fetch Swagger from URL: {str(e)}")
+        elif swagger_text:
+            spec_content = swagger_text
+            print(f"[RequirementsAgent] Using provided spec text: {len(spec_content)} bytes")
+        else:
+            raise ValueError("Either swagger_url or swagger_text must be provided")
+
+        # 2. Парсим спецификацию (JSON или YAML)
+        try:
+            spec_dict = json.loads(spec_content)
+            print("[RequirementsAgent] Parsed as JSON")
+        except json.JSONDecodeError:
+            try:
+                spec_dict = yaml.safe_load(spec_content)
+                print("[RequirementsAgent] Parsed as YAML")
+            except yaml.YAMLError as e:
+                raise ValueError(f"Invalid OpenAPI spec format: {e}")
+
+        # 3. Извлекаем базовую информацию
+        api_title = spec_dict.get("info", {}).get("title", "API")
+        api_version = spec_dict.get("info", {}).get("version", "1.0.0")
+        base_url = ""
+        if "servers" in spec_dict and spec_dict["servers"]:
+            base_url = spec_dict["servers"][0].get("url", "")
+
+        print(f"[RequirementsAgent] API: {api_title} v{api_version}, base_url={base_url}")
+
+        # 4. Извлекаем эндпоинты
+        endpoints_summary = self._extract_endpoints_summary(spec_dict)
+        print(f"[RequirementsAgent] Extracted {len(endpoints_summary)} endpoints")
+
+        # 5. Формируем промпт для LLM
+        system_prompt = f"""You are a QA automation expert specializing in REST API testing.
+
+**IMPORTANT: Write ALL content ONLY in ENGLISH.**
+
+Generate comprehensive manual test cases for REST API based on OpenAPI specification.
+
+Requirements:
+- Generate 15-25 test cases covering all major endpoints
+- Include positive scenarios (happy path)
+- Include negative scenarios (invalid data, missing auth, not found, conflicts)
+- Test authentication and authorization
+- Test data validation and error handling
+- Cover edge cases (empty lists, invalid IDs, boundary values)
+- Use AAA pattern (Arrange-Act-Assert) in steps
+- Each test case must have:
+  * title: Clear descriptive name
+  * description: What is being tested and why (max 50 words)
+  * steps: Detailed API call steps (max 3 steps, each under 20 words)
+  * expected_result: Expected HTTP status code and response format (max 30 words)
+  * priority: CRITICAL (auth, core CRUD), HIGH (important flows), NORMAL (standard), LOW (edge cases)
+  * tags: ["api", endpoint category, scenario type]
+
+API Base URL: {base_url}
+API Title: {api_title}
+
+Return ONLY valid JSON (no markdown, no explanations):
+{{
+  "name": "Test Suite Name",
+  "cases": [
+    {{
+      "title": "Test case title",
+      "description": "What is tested",
+      "steps": ["Arrange: ...", "Act: ...", "Assert: ..."],
+      "expected_result": "Expected outcome",
+      "priority": "HIGH",
+      "tags": ["api", "tag"]
+    }}
+  ]
+}}
+"""
+
+        user_prompt = f"""OpenAPI Specification Summary:
+
+API: {api_title} v{api_version}
+Base URL: {base_url}
+
+Endpoints:
+{json.dumps(endpoints_summary[:20], indent=2)}
+
+Additional Requirements:
+{requirements_text or 'Generate comprehensive test cases covering all endpoints with CRUD operations, authentication, positive/negative scenarios, and edge cases.'}
+
+Generate 15-25 API test cases.
+"""
+
+        print("[RequirementsAgent] Calling LLM for API spec generation...")
+
+        # 6. Вызываем LLM
+        with get_llm_client() as client:
+            resp = client.post(
+                "/chat/completions",
+                json={
+                    "model": self._model_name,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    "temperature": 0.7,
+                    "max_tokens": 50000,
+                }
+            )
+
+        if resp.status_code != 200:
+            print(f"[RequirementsAgent] LLM API error: {resp.status_code}")
+            raise Exception(f"LLM API error: {resp.status_code} - {resp.text}")
+
+        data = resp.json()
+        content = data["choices"][0]["message"]["content"]
+
+        print(f"[RequirementsAgent] LLM response length: {len(content)} characters")
+
+        # 7. Парсим ответ
+        try:
+            backticks = "```
+            if backticks + "json" in content:
+                content = content.split(backticks + "json").split(backticks).strip()
+            elif backticks in content:
+                parts = content.split(backticks)
+                if len(parts) >= 2:
+                    content = parts.strip()
+
+            suite_data = json.loads(content.strip())
+            print(f"[RequirementsAgent] Parsed response type: {type(suite_data)}")
+
+            # Если LLM вернул массив напрямую
+            if isinstance(suite_data, list):
+                for case in suite_data:
+                    if isinstance(case, dict):
+                        priority = str(case.get("priority", "NORMAL")).upper().strip()
+                        if priority not in ["CRITICAL", "HIGH", "MEDIUM", "NORMAL", "LOW"]:
+                            priority = "NORMAL"
+                        case["priority"] = priority
+                cases = [TestCase(**case) for case in suite_data]
+                return TestSuite(
+                    name=f"{api_title} API Test Suite",
+                    description=f"Manual test cases for {api_title} v{api_version}",
+                    cases=cases
+                )
+            # Если вернул объект с полем cases
+            elif isinstance(suite_data, dict):
+                for case in suite_data.get("cases", []):
+                    if isinstance(case, dict):
+                        priority = str(case.get("priority", "NORMAL")).upper().strip()
+                        if priority not in ["CRITICAL", "HIGH", "MEDIUM", "NORMAL", "LOW"]:
+                            priority = "NORMAL"
+                        case["priority"] = priority
+                cases = [TestCase(**case) for case in suite_data.get("cases", [])]
+                return TestSuite(
+                    name=suite_data.get("name", f"{api_title} API Test Suite"),
+                    description=suite_data.get("description", f"Manual test cases for {api_title} v{api_version}"),
+                    cases=cases
+                )
+            else:
+                raise ValueError(f"Unexpected response format: {type(suite_data)}")
+
+        except (json.JSONDecodeError, KeyError, ValueError) as e:
+            print(f"[RequirementsAgent] Failed to parse LLM response: {e}")
+            print(f"[RequirementsAgent] Full content:\n{content[:500]}")
+            raise Exception(f"Failed to parse LLM response: {e}")
+
+    def _extract_endpoints_summary(self, spec_dict: dict) -> list:
+        """
+        Извлекает краткую информацию об эндпоинтах из OpenAPI спецификации.
+        """
+        endpoints = []
+        paths = spec_dict.get("paths", {})
+
+        for path, methods in paths.items():
+            for method, details in methods.items():
+                if method.upper() in ["GET", "POST", "PUT", "PATCH", "DELETE"]:
+                    endpoint_info = {
+                        "method": method.upper(),
+                        "path": path,
+                        "summary": details.get("summary", ""),
+                        "description": (details.get("description", "") or "")[:150],  # Limit description
+                    }
+
+                    # Добавляем информацию о параметрах если есть
+                    if "parameters" in details:
+                        params = [f"{p.get('name')} ({p.get('in')})" for p in details["parameters"][:5]]
+                        if params:
+                            endpoint_info["parameters"] = params
+
+                    # Добавляем информацию о request body если есть
+                    if "requestBody" in details:
+                        endpoint_info["has_request_body"] = True
+
+                    # Добавляем коды ответов
+                    responses = list(details.get("responses", {}).keys())[:5]
+                    if responses:
+                        endpoint_info["response_codes"] = responses
+
+                    endpoints.append(endpoint_info)
+
+        return endpoints
 
     async def generate_from_ui_model(self, ui_model: UiModel) -> TestSuite:
         # Формируем текст требований из UI модели
