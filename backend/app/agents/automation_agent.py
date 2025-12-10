@@ -116,7 +116,6 @@ Generate complete pytest code with:
 
 Return ONLY Python code, no markdown, no explanations."""
 
-        # Вызов LLM
         with get_llm_client() as client:
             resp = client.post(
                 "/chat/completions",
