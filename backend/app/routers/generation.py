@@ -139,7 +139,7 @@ POST /disks/{disk_id}/attach
 @router.post("/automation/e2e", response_model=dict)
 async def generate_e2e_automation(
         test_suite: TestSuite,
-        base_url: str = "https://calculator.net"
+        base_url: str
 ):
     try:
         agent = AutomationAgent()
