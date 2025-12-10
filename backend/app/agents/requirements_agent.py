@@ -433,9 +433,8 @@ Generate 15-25 API test cases.
 
         print(f"[RequirementsAgent] LLM response length: {len(content)} characters")
 
-        # 7. Парсим ответ
         try:
-            backticks = "```
+            backticks = "```"
             if backticks + "json" in content:
                 content = content.split(backticks + "json").split(backticks).strip()
             elif backticks in content:
