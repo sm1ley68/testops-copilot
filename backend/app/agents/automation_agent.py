@@ -10,16 +10,6 @@ class AutomationAgent:
     """
 
     async def generate_e2e_tests(self, test_suite: TestSuite, base_url: str) -> str:
-        """
-        Генерирует pytest E2E тесты с Playwright из ручных тест-кейсов.
-
-        Args:
-            test_suite: Набор ручных тест-кейсов
-            base_url: Базовый URL приложения для тестирования
-
-        Returns:
-            str: Готовый pytest код
-        """
         system_prompt = """You are an expert in test automation with Python, pytest, and Playwright.
 
 Your task is to generate complete, production-ready pytest E2E test code from manual test cases.
