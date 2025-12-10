@@ -2,6 +2,7 @@ import json
 from typing import List, Optional
 import httpx
 import yaml
+import re
 from app.models import TestSuite, TestCase
 from app.llm_client import get_llm_client
 from app.config import settings
@@ -117,11 +118,11 @@ class RequirementsAgent:
         try:
             backticks = "```"
             if backticks + "json" in content:
-                content = content.split(backticks + "json").split(backticks).strip()
+                content = content.split(backticks + "json").split(backticks).strip()[1]
             elif backticks in content:
                 parts = content.split(backticks)
                 if len(parts) >= 2:
-                    content = parts.strip()
+                    content = parts.strip()[1]
 
             suite_data = json.loads(content)
 
@@ -304,7 +305,27 @@ Minimum 15-20 test cases required."""
         Принимает либо URL на swagger.json/yaml, либо текст спецификации.
         """
         print(f"[RequirementsAgent] generate_from_api_spec called")
-        print(f"[RequirementsAgent] swagger_url={swagger_url}, has_text={bool(swagger_text)}")
+        print(f"[RequirementsAgent] Raw swagger_url={repr(swagger_url)}, has_text={bool(swagger_text)}")
+
+        # ✅ Извлекаем и очищаем URL
+        if swagger_url:
+            # Убираем markdown форматирование типа [text](url)
+            if '](http' in swagger_url:
+                # Markdown link: [text](url)
+                match = re.search(r'\]\((https?://[^\)]+)\)', swagger_url)
+                if match:
+                    swagger_url = match.group(1)
+
+            # Извлекаем URL из текста
+            url_pattern = r'(https?://[^\s\[\]\(\)]+)'
+            matches = re.findall(url_pattern, swagger_url)
+            if matches:
+                swagger_url = matches[0].strip()
+                print(f"[RequirementsAgent] Extracted URL from text: {swagger_url}")
+
+            # Убираем непечатаемые символы и пробелы
+            swagger_url = ''.join(char for char in swagger_url if char.isprintable() and not char.isspace())
+            print(f"[RequirementsAgent] Final cleaned URL: {swagger_url}")
 
         # 1. Получаем спецификацию
         spec_content = ""
@@ -317,6 +338,11 @@ Minimum 15-20 test cases required."""
                     response.raise_for_status()
                     spec_content = response.text
                     print(f"[RequirementsAgent] Fetched {len(spec_content)} bytes")
+                except httpx.InvalidURL as e:
+                    print(f"[RequirementsAgent] Invalid URL error: {e}")
+                    print(f"[RequirementsAgent] URL bytes: {swagger_url.encode('utf-8')}")
+                    raise Exception(
+                        f"Invalid Swagger URL format. Please provide a clean URL like: https://petstore3.swagger.io/api/v3/openapi.json")
                 except httpx.HTTPStatusError as e:
                     raise Exception(f"Failed to fetch Swagger from URL: {e.response.status_code} - {e.response.text}")
                 except Exception as e:
@@ -436,11 +462,11 @@ Generate 15-25 API test cases.
         try:
             backticks = "```"
             if backticks + "json" in content:
-                content = content.split(backticks + "json").split(backticks).strip()
+                content = content.split(backticks + "json")[1].split(backticks).strip()
             elif backticks in content:
                 parts = content.split(backticks)
                 if len(parts) >= 2:
-                    content = parts.strip()
+                    content = parts[1].strip()
 
             suite_data = json.loads(content.strip())
             print(f"[RequirementsAgent] Parsed response type: {type(suite_data)}")
