@@ -29,7 +29,7 @@ class CoordinatorAgent:
             suite = await self.req_agent.generate_from_ui_model(ui_model)
 
         # 2. Генерация e2e
-        auto_tests = await self.auto_agent.generate_from_suite(suite)
+        auto_tests = await self.auto_agent.generate_e2e_tests(suite, url or "http://localhost")
 
         # 3. Покрытие
         report = await self.cov_agent.analyze(suite, auto_tests)
