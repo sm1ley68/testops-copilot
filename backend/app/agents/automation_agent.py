@@ -77,9 +77,7 @@ Return ONLY Python code, no markdown, no explanations."""
         return pytest_code
 
     async def generate_api_tests(self, test_suite: TestSuite, base_url: str) -> str:
-        """
-        Генерирует pytest API тесты из ручных тест-кейсов.
-        """
+
         system_prompt = """You are an expert in API test automation with Python, pytest, and httpx/requests.
 
 Your task is to generate complete, production-ready pytest API test code from manual test cases.
