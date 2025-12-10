@@ -5,10 +5,6 @@ from app.llm_client import get_llm_client
 
 
 class AutomationAgent:
-    """
-    Агент для генерации автоматизированных pytest тестов из ручных тест-кейсов.
-    """
-
     async def generate_e2e_tests(self, test_suite: TestSuite, base_url: str) -> str:
         system_prompt = """You are an expert in test automation with Python, pytest, and Playwright.
 
