@@ -6,12 +6,18 @@ from app.models import UiModel, UiPage, UiElement
 class HtmlAnalysisAgent:
     async def analyze(self, *, url: str | None, html: str | None) -> UiModel:
         if html is None and url:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(url, timeout=30.0)
-                html = response.text
+            try:
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(url, timeout=30.0)
+                    response.raise_for_status()  # Проверка 200 OK
+                    html = response.text
+            except httpx.HTTPStatusError as e:
+                raise ValueError(f"Failed to fetch URL: {e.response.status_code}")
+            except httpx.TimeoutException:
+                raise ValueError(f"Request to {url} timed out")
 
-        if not html:
-            raise ValueError("Either url or html must be provided")
+        if not html or len(html) < 50:
+            raise ValueError("HTML is empty or too short")
 
         soup = BeautifulSoup(html, 'html.parser')
         elements = []
