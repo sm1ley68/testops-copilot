@@ -6,6 +6,7 @@ from pydantic import BaseModel, HttpUrl
 from app.agents.coordinator import CoordinatorAgent
 from app.agents.requirements_agent import RequirementsAgent
 from app.models import CoverageReport, TestSuite
+from app.agents.automation_agent import AutomationAgent
 
 router = APIRouter(prefix="/generation", tags=["generation"])
 
@@ -122,10 +123,26 @@ POST /disks/{disk_id}/attach
         print(f"[DEBUG] Result type: {type(result)}, cases: {len(result.cases) if result else 'None'}")
         return result
     except Exception as e:
-        print(f"[DEBUG] ===== EXCEPTION CAUGHT =====")
-        print(f"[DEBUG] Exception type: {type(e)}")
-        print(f"[DEBUG] Exception message: {str(e)}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to generate API test cases: {str(e)}")
 
+
+@router.post("/automation/e2e", response_model=dict)
+async def generate_e2e_automation(
+        test_suite: TestSuite,
+        base_url: str = "https://calculator.net"
+):
+    try:
+        agent = AutomationAgent()
+        pytest_code = await agent.generate_e2e_tests(test_suite, base_url)
+
+        return {
+            "pytest_code": pytest_code,
+            "test_count": len(test_suite.cases),
+            "base_url": base_url
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to generate E2E tests: {str(e)}")
