@@ -21,16 +21,24 @@ class UiSourcePayload(BaseModel):
 
 @router.post("/ui/full", response_model=CoverageReport)
 async def generate_full_ui_flow(payload: UiSourcePayload):
+    import traceback
     try:
+        print(f"[DEBUG] Starting full_ui_flow")
+        print(f"[DEBUG] url={payload.url}, html_len={len(payload.html or '')}, req_text={payload.requirements_text}")
+
         report = await coordinator.full_ui_flow(
             url=str(payload.url) if payload.url else None,
             html=payload.html,
             requirements_text=payload.requirements_text,
         )
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=str(exc))
 
-    return report
+        print(f"[DEBUG] Success!")
+        return report
+
+    except Exception as exc:
+        print(f"[ERROR] Exception in /ui/full: {exc}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.post("/api/vms", response_model=TestSuite)
