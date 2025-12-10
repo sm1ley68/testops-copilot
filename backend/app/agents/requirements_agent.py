@@ -161,19 +161,6 @@ class RequirementsAgent:
             print(f"[RequirementsAgent] Full content:\n{content}")
             raise Exception(f"Failed to parse LLM response: {e}\nContent: {content[:1000]}")
 
-    async def generate_from_ui_model(self, ui_model: UiModel) -> TestSuite:
-        # Формируем текст требований из UI модели
-        requirements_text = "Generate test cases for the following UI:\n\n"
-
-        for page in ui_model.pages:
-            requirements_text += f"Page: {page.name}\nURL: {page.url}\n\n"
-            requirements_text += "Elements:\n"
-            for element in page.elements:
-                requirements_text += f"- {element.type} '{element.name}' (locator: {element.locator}, role: {element.role})\n"
-            requirements_text += f"\nMain flows: {', '.join(page.main_flows)}\n\n"
-
-        # Используем существующий метод генерации
-        return await self.generate_from_requirements_text(requirements_text)
 
     async def generate_api_test_cases(self, api_spec: str) -> TestSuite:
         """Генерирует тест-кейсы для API на основе спецификации."""
@@ -315,3 +302,18 @@ Minimum 15-20 test cases required."""
             print(f"[RequirementsAgent] Failed to parse API response: {e}")
             print(f"[RequirementsAgent] Full content:\n{content}")
             raise Exception(f"Failed to parse LLM response: {e}\nContent: {content[:1000]}")
+
+
+    async def generate_from_ui_model(self, ui_model: UiModel) -> TestSuite:
+        # Формируем текст требований из UI модели
+        requirements_text = "Generate test cases for the following UI:\n\n"
+
+        for page in ui_model.pages:
+            requirements_text += f"Page: {page.name}\nURL: {page.url}\n\n"
+            requirements_text += "Elements:\n"
+            for element in page.elements:
+                requirements_text += f"- {element.type} '{element.name}' (locator: {element.locator}, role: {element.role})\n"
+            requirements_text += f"\nMain flows: {', '.join(page.main_flows)}\n\n"
+
+        # Используем существующий метод генерации
+        return await self.generate_from_requirements_text(requirements_text)
