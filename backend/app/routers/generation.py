@@ -146,3 +146,23 @@ async def generate_e2e_automation(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to generate E2E tests: {str(e)}")
+
+
+@router.post("/automation/api", response_model=dict)
+async def generate_api_automation(
+        test_suite: TestSuite,
+        base_url: str = "https://compute.api.cloud.ru"
+):
+    try:
+        agent = AutomationAgent()
+        pytest_code = await agent.generate_api_tests(test_suite, base_url)
+
+        return {
+            "pytest_code": pytest_code,
+            "test_count": len(test_suite.cases),
+            "base_url": base_url
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to generate API tests: {str(e)}")
