@@ -3,7 +3,6 @@ from typing import List
 from app.models import TestSuite, TestCase
 from app.llm_client import get_llm_client
 
-
 class AutomationAgent:
     """
     Агент для генерации автоматизированных pytest тестов из ручных тест-кейсов.
