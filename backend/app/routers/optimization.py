@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from typing import Optional
 
-from app.models import TestSuite, CoverageReport
+from app.models import TestSuite, CoverageReport, TestCase
 from app.agents.coverage_agent import CoverageAgent
 
 router = APIRouter(prefix="/optimization", tags=["optimization"])
@@ -18,6 +19,11 @@ async def analyze_suite(test_suite: TestSuite):
     Использует LLM для интеллектуального анализа.
     """
     try:
+        # Добавляем id=None для каждого кейса если его нет
+        for case in test_suite.cases:
+            if not hasattr(case, 'id') or case.id is None:
+                case.id = None
+
         agent = CoverageAgent()
         report = await agent.analyze(test_suite)
         return report
