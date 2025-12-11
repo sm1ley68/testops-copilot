@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from app.config import settings
 from app.routers import generation, validation, optimization, requirements
+from app.routers import chat
 
 app = FastAPI(title="TestOps Copilot API", version="0.1.0")
 
@@ -9,6 +10,7 @@ app.include_router(generation.router)
 app.include_router(validation.router)
 app.include_router(optimization.router)
 app.include_router(requirements.router)
+app.include_router(chat.router)
 
 
 @app.get("/health")
