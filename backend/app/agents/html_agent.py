@@ -48,7 +48,13 @@ class HtmlAnalysisAgent:
     def _get_element_type(self, tag) -> str:
         """Определяем тип элемента"""
         if tag.name == 'input':
-            return tag.get('type', 'text')
+            input_type = tag.get('type', 'text')
+            allowed_types = ['button', 'checkbox', 'text', 'email', 'password', 'number']
+            if input_type not in allowed_types:
+                return 'input'
+            if input_type in ['number', 'email', 'password', 'tel', 'url', 'search']:
+                return 'input'
+            return input_type
         if tag.name == 'a':
             return 'link'
         if tag.name == 'textarea':
