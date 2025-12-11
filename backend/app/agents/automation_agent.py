@@ -3,10 +3,86 @@ from typing import List
 from app.models import TestSuite, TestCase
 from app.llm_client import get_llm_client
 
+
 class AutomationAgent:
     """
     Агент для генерации автоматизированных pytest тестов из ручных тест-кейсов.
     """
+
+    async def generate_from_swagger(self, swagger_data: dict, base_url: str) -> str:
+        """
+        Генерирует pytest API тесты из реального Swagger/OpenAPI JSON.
+        Парсит все эндпоинты и создаёт тест для каждого.
+        """
+
+        paths = swagger_data.get('paths', {})
+
+        system_prompt = """You are an expert in API test automation with Python, pytest, httpx, and Allure.
+
+Your task is to generate complete, production-ready pytest API tests from OpenAPI/Swagger specification.
+
+IMPORTANT REQUIREMENTS:
+1. Use httpx.Client for HTTP requests
+2. Generate ONE test function for EACH endpoint from the specification
+3. Add Allure decorators (@allure.title, @allure.description, @allure.step, @allure.severity, @allure.tag)
+4. Include proper request/response validation based on spec
+5. Validate status codes, response schemas, headers
+6. Include pytest fixture for api_client setup
+7. Generate ONLY valid Python code, no explanations or markdown
+8. Test both success and error cases where applicable
+9. Use parameters from spec (path, query, body)
+10. Follow AAA pattern (Arrange-Act-Assert)
+
+Output ONLY the Python code, starting with imports."""
+
+        user_prompt = f"""Generate pytest API automation tests from this Swagger/OpenAPI specification.
+
+Base URL: {base_url}
+
+API Specification (paths and methods):
+{json.dumps(paths, indent=2, ensure_ascii=False)}
+
+Generate complete pytest code with:
+- All necessary imports (pytest, httpx, allure, json)
+- Pytest fixture api_client with base_url
+- ONE test function per endpoint/method combination
+- Use actual endpoint paths, methods, parameters from spec
+- Allure decorators for each test
+- Clear test steps with allure.step()
+- Assertions for status codes and response structure
+- Handle authentication if specified in spec
+
+CRITICAL: Generate tests for ALL endpoints in the specification, not just examples.
+
+Return ONLY Python code, no markdown blocks, no explanations."""
+
+        with get_llm_client() as client:
+            resp = client.post(
+                "/chat/completions",
+                json={
+                    "model": "openai/gpt-oss-120b",
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    "temperature": 0.2,  # Низкая температура для точности
+                    "max_tokens": 16000,  # Больше токенов для всех эндпоинтов
+                }
+            )
+
+        if resp.status_code != 200:
+            raise Exception(f"LLM API error: {resp.status_code} - {resp.text}")
+
+        data = resp.json()
+        pytest_code = data["choices"][0]["message"]["content"]
+
+        # Убираем markdown если есть
+        if "```":
+            pytest_code = pytest_code.split("```python").split("```")
+        elif "```" in pytest_code:
+            pytest_code = pytest_code.replace("```")
+
+        return pytest_code.strip()
 
     async def generate_e2e_tests(self, test_suite: TestSuite, base_url: str) -> str:
         """
@@ -69,9 +145,9 @@ Return ONLY Python code, no markdown, no explanations."""
         pytest_code = data["choices"][0]["message"]["content"]
 
         if pytest_code.startswith("```"):
-            pytest_code = pytest_code.replace("```python", "").replace("```")
+            pytest_code = pytest_code.replace("``````", "")
         elif pytest_code.startswith("```"):
-            pytest_code = pytest_code.replace("```")
+            pytest_code = pytest_code.replace("```", "")
 
         return pytest_code
 
@@ -133,8 +209,8 @@ Return ONLY Python code, no markdown, no explanations."""
         data = resp.json()
         pytest_code = data["choices"][0]["message"]["content"]
 
-        if pytest_code.startswith("```python"):
-            pytest_code = pytest_code.replace("``````", "").strip()
+        if pytest_code.startswith("```"):
+            pytest_code = pytest_code.replace("```", "").strip()
         elif pytest_code.startswith("```"):
             pytest_code = pytest_code.replace("```", "").strip()
 

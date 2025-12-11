@@ -1,5 +1,6 @@
 from typing import Optional
-
+import httpx
+import traceback
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, HttpUrl
 
@@ -21,7 +22,6 @@ class UiSourcePayload(BaseModel):
     requirements_text: Optional[str] = None
 
 
-# ✅ НОВАЯ МОДЕЛЬ для API спецификации
 class ApiSpecPayload(BaseModel):
     swagger_url: Optional[str] = None  # URL на swagger.json/yaml
     swagger_text: Optional[str] = None  # Или текст спецификации
@@ -340,20 +340,47 @@ async def generate_e2e_automation(
 
 
 @router.post("/automation/api", response_model=dict)
-async def generate_api_automation(
-        test_suite: TestSuite,
-        base_url: str = "https://compute.api.cloud.ru"
-):
+async def generate_api_automation(payload: ApiSpecPayload):
+    """
+    Генерирует pytest из Swagger/OpenAPI спецификации.
+    Парсит реальный Swagger и создаёт тест для КАЖДОГО эндпоинта.
+    """
+
     try:
+        if not payload.swagger_url:
+            raise HTTPException(
+                status_code=400,
+                detail="swagger_url is required"
+            )
+
+        swagger_url = payload.swagger_url
+        print(f"[DEBUG] Downloading Swagger from: {swagger_url}")
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.get(swagger_url)
+            resp.raise_for_status()
+            swagger_data = resp.json()
+
+        schemes = swagger_data.get('schemes', ['https'])
+        host = swagger_data.get('host', '')
+        base_path = swagger_data.get('basePath', '')
+        base_url = f"{schemes[0]}://{host}{base_path}"
+
+        print(f"[DEBUG] Parsed base_url: {base_url}")
+        print(f"[DEBUG] Found {len(swagger_data.get('paths', {}))} endpoints")
+
         agent = AutomationAgent()
-        pytest_code = await agent.generate_api_tests(test_suite, base_url)
+        pytest_code = await agent.generate_from_swagger(swagger_data, base_url)
 
         return {
             "pytest_code": pytest_code,
-            "test_count": len(test_suite.cases),
-            "base_url": base_url
+            "test_count": len(swagger_data.get('paths', {})),
+            "base_url": base_url,
+            "swagger_url": swagger_url
         }
+
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=400, detail=f"Failed to fetch Swagger: {str(e)}")
     except Exception as e:
-        import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Failed to generate API tests: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
