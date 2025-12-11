@@ -78,9 +78,11 @@ Return ONLY Python code, no markdown blocks, no explanations."""
 
         # Убираем markdown если есть
         if "```":
-            pytest_code = pytest_code.split("```python").split("```")
-        elif "```" in pytest_code:
-            pytest_code = pytest_code.replace("```")
+            parts = pytest_code.split("```python")
+            if len(parts) > 1:
+                pytest_code = parts[1].split("```")
+            elif "```" in pytest_code:
+                pytest_code = pytest_code.replace("```")
 
         return pytest_code.strip()
 
