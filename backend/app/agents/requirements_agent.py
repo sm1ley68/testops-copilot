@@ -240,7 +240,7 @@ Minimum 15-20 test cases required."""
             raise Exception(f"LLM API error: {resp.status_code} - {resp.text}")
 
         data = resp.json()
-        content = data["choices"]["message"]["content"]
+        content = data["choices"][0]["message"]["content"]
 
         print(f"[RequirementsAgent] API response length: {len(content)} characters")
 
