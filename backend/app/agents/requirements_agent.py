@@ -454,7 +454,14 @@ Generate 15-25 API test cases.
             print(f"[RequirementsAgent] LLM API error: {resp.status_code}")
             raise Exception(f"LLM API error: {resp.status_code} - {resp.text}")
 
-        data = resp.json()
+        try:
+            data = resp.json()
+        except json.JSONDecodeError as e:
+            print(f"[RequirementsAgent] Failed to parse JSON response: {e}")
+            print(f"[RequirementsAgent] Response text (first 500 chars): {resp.text[:500]}")
+            print(f"[RequirementsAgent] Response status: {resp.status_code}")
+            raise Exception(f"LLM returned invalid JSON: {e}")
+
         content = data["choices"][0]["message"]["content"]
 
         print(f"[RequirementsAgent] LLM response length: {len(content)} characters")
