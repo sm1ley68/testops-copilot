@@ -50,7 +50,6 @@ async def generate_full_ui_flow(payload: UiSourcePayload):
         raise HTTPException(status_code=500, detail=str(exc))
 
 
-# ✅ НОВЫЙ ЭНДПОИНТ: Генерация Allure TestOps as Code для UI
 @router.post("/allure-code/ui", response_model=dict)
 async def generate_ui_allure_code(payload: UiSourcePayload):
     """
