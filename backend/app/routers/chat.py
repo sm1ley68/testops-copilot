@@ -5,6 +5,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Optional
 import json
+import httpx
 from app.llm_client import get_llm_client
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -16,8 +17,8 @@ class Message(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    messages: List[Message]  # Вся история чата
-    stream: Optional[bool] = True  # По умолчанию streaming
+    messages: List[Message]
+    stream: Optional[bool] = True
 
 
 class ChatResponse(BaseModel):
@@ -30,7 +31,6 @@ async def chat_completion(request: ChatRequest):
     try:
         print(f"[Chat] Received {len(request.messages)} messages (history included)")
 
-        # Системный промпт для чат-бота
         system_message = {
             "role": "system",
             "content": """You are a helpful AI assistant specialized in software testing, QA, and test automation.
@@ -48,39 +48,42 @@ suggest using the dedicated buttons for test generation (UI Tests, API Tests, et
 Remember the conversation history and maintain context across messages."""
         }
 
-        # Формируем сообщения для LLM (вся история + новое сообщение)
         llm_messages = [system_message] + [
             {"role": msg.role, "content": msg.content}
             for msg in request.messages
         ]
 
-        print(f"[Chat] Sending {len(llm_messages)} messages to LLM (including system prompt)")
+        print(f"[Chat] Sending {len(llm_messages)} messages to LLM")
 
         # Если streaming запрошен
         if request.stream:
             async def generate():
                 try:
-                    with get_llm_client() as client:
-                        resp = client.post(
-                            "/chat/completions",
-                            json={
-                                "model": "openai/gpt-oss-120b",
-                                "messages": llm_messages,
-                                "temperature": 0.8,
-                                "max_tokens": 1500,
-                                "stream": True
-                            },
-                            stream=True,
-                            timeout=300
-                        )
+                    # Используем httpx для streaming
+                    async with httpx.AsyncClient(timeout=300.0) as client:
+                        # Получаем базовый URL из контекста
+                        with get_llm_client() as llm_client:
+                            base_url = llm_client.base_url
 
-                        for line in resp.iter_lines():
-                            if line:
-                                decoded_line = line.decode('utf-8')
-                                if decoded_line.startswith('data: '):
-                                    yield decoded_line + '\n\n'
+                        async with client.stream(
+                                'POST',
+                                f"{base_url}/chat/completions",
+                                json={
+                                    "model": "openai/gpt-oss-120b",
+                                    "messages": llm_messages,
+                                    "temperature": 0.8,
+                                    "max_tokens": 1500,
+                                    "stream": True
+                                },
+                                headers={"Content-Type": "application/json"}
+                        ) as response:
+                            async for line in response.aiter_lines():
+                                if line.strip():
+                                    yield f"{line}\n\n"
 
                 except Exception as e:
+                    import traceback
+                    traceback.print_exc()
                     error_data = {
                         "error": str(e),
                         "type": "stream_error"
@@ -105,8 +108,7 @@ Remember the conversation history and maintain context across messages."""
                     "messages": llm_messages,
                     "temperature": 0.8,
                     "max_tokens": 1500,
-                },
-                timeout=300
+                }
             )
 
         if resp.status_code != 200:
