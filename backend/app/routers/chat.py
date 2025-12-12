@@ -1,5 +1,3 @@
-# backend/app/routers/chat.py
-
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -19,7 +17,7 @@ class Message(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: List[Message]
-    stream: Optional[bool] = True
+    stream: Optional[bool] = False
 
 
 class ChatResponse(BaseModel):
@@ -31,6 +29,7 @@ class ChatResponse(BaseModel):
 async def chat_completion(request: ChatRequest):
     try:
         print(f"[Chat] Received {len(request.messages)} messages")
+        print(f"[Chat] Stream={request.stream}")
 
         system_message = {
             "role": "system",
@@ -56,11 +55,12 @@ Remember the conversation history and maintain context across messages."""
 
         print(f"[Chat] Sending {len(llm_messages)} messages to LLM")
 
-        # Если streaming запрошен
-        if request.stream:
+        # Streaming режим
+        if request.stream is True:
+            print(f"[Chat] STREAMING MODE ENABLED")
+
             async def generate():
                 try:
-                    # Используем настройки из settings напрямую
                     base_url = settings.cloudru_api_url
                     token = settings.cloudru_api_token
 
@@ -86,27 +86,25 @@ Remember the conversation history and maintain context across messages."""
 
                             async for line in response.aiter_lines():
                                 if line.strip():
-                                    yield f"{line}\n\n"
+                                    if line.startswith("data: "):
+                                        yield f"{line}\n\n"
+                                    if "data: [DONE]" in line:
+                                        break
 
                 except Exception as e:
                     import traceback
                     traceback.print_exc()
-                    error_data = {
-                        "error": str(e),
-                        "type": "stream_error"
-                    }
+                    error_data = {"error": str(e), "type": "stream_error"}
                     yield f"data: {json.dumps(error_data)}\n\n"
 
             return StreamingResponse(
                 generate(),
                 media_type="text/event-stream",
-                headers={
-                    "Cache-Control": "no-cache",
-                    "X-Accel-Buffering": "no"
-                }
+                headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
             )
 
-        # Обычный режим (без стриминга)
+        # Обычный режим
+        print(f"[Chat] NORMAL MODE")
         with get_llm_client() as client:
             resp = client.post(
                 "/chat/completions",
@@ -132,7 +130,4 @@ Remember the conversation history and maintain context across messages."""
     except Exception as e:
         import traceback
         traceback.print_exc()
-        raise HTTPException(
-            status_code=500,
-            detail=f"Chat failed: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Chat failed: {str(e)}")
