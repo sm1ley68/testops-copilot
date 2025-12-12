@@ -1,1 +1,0 @@
-# testops-copilot
