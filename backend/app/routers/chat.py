@@ -7,6 +7,7 @@ from typing import List, Optional
 import json
 import httpx
 from app.llm_client import get_llm_client
+from app.config import settings
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -29,7 +30,7 @@ class ChatResponse(BaseModel):
 @router.post("/completions")
 async def chat_completion(request: ChatRequest):
     try:
-        print(f"[Chat] Received {len(request.messages)} messages (history included)")
+        print(f"[Chat] Received {len(request.messages)} messages")
 
         system_message = {
             "role": "system",
@@ -59,12 +60,11 @@ Remember the conversation history and maintain context across messages."""
         if request.stream:
             async def generate():
                 try:
-                    # Используем httpx для streaming
-                    async with httpx.AsyncClient(timeout=300.0) as client:
-                        # Получаем базовый URL из контекста
-                        with get_llm_client() as llm_client:
-                            base_url = llm_client.base_url
+                    # Используем настройки из settings напрямую
+                    base_url = settings.cloudru_api_url
+                    token = settings.cloudru_api_token
 
+                    async with httpx.AsyncClient(timeout=300.0) as client:
                         async with client.stream(
                                 'POST',
                                 f"{base_url}/chat/completions",
@@ -75,8 +75,15 @@ Remember the conversation history and maintain context across messages."""
                                     "max_tokens": 1500,
                                     "stream": True
                                 },
-                                headers={"Content-Type": "application/json"}
+                                headers={
+                                    "Authorization": f"Bearer {token}",
+                                    "Content-Type": "application/json"
+                                }
                         ) as response:
+                            if response.status_code != 200:
+                                error_text = await response.aread()
+                                raise Exception(f"LLM API error: {response.status_code} - {error_text.decode()}")
+
                             async for line in response.aiter_lines():
                                 if line.strip():
                                     yield f"{line}\n\n"
