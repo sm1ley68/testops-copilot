@@ -64,7 +64,11 @@ Remember the conversation history and maintain context across messages."""
                     base_url = settings.cloudru_api_url
                     token = settings.cloudru_api_token
 
+                    print(f"[Chat] Creating AsyncClient to {base_url}")
+
                     async with httpx.AsyncClient(timeout=300.0) as client:
+                        print(f"[Chat] AsyncClient created, making request...")
+
                         async with client.stream(
                                 'POST',
                                 f"{base_url}/chat/completions",
@@ -80,19 +84,30 @@ Remember the conversation history and maintain context across messages."""
                                     "Content-Type": "application/json"
                                 }
                         ) as response:
+                            print(f"[Chat] Response status: {response.status_code}")
+
                             if response.status_code != 200:
                                 error_text = await response.aread()
                                 raise Exception(f"LLM API error: {response.status_code} - {error_text.decode()}")
 
+                            print(f"[Chat] Starting to stream...")
+                            count = 0
                             async for line in response.aiter_lines():
+                                count += 1
+                                print(f"[Chat] Line {count}: {line[:50]}")
+
                                 if line.strip():
                                     if line.startswith("data: "):
                                         yield f"{line}\n\n"
                                     if "data: [DONE]" in line:
+                                        print(f"[Chat] Stream finished")
                                         break
+
+                            print(f"[Chat] Total lines: {count}")
 
                 except Exception as e:
                     import traceback
+                    print(f"[Chat] STREAM ERROR: {str(e)}")
                     traceback.print_exc()
                     error_data = {"error": str(e), "type": "stream_error"}
                     yield f"data: {json.dumps(error_data)}\n\n"
